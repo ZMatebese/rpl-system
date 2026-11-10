@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Registrar dossier palette — ledger paper and ink, with a single
+     seal-oxblood accent reserved for institutional actions. */
+  --color-paper:      #eef1f4;
+  --color-leaf:       #f8fafb;
+  --color-rule:       #c8d0d8;
+  --color-rule-soft:  #dde3e8;
+  --color-ink:        #16202b;
+  --color-ink-soft:   #4b5a68;
+  --color-seal:       #7a2e35;
+  --color-seal-weak:  #f0e2e3;
+
+  /* Lifecycle states */
+  --color-state-draft:    #6b7785;
+  --color-state-progress: #a8761f;
+  --color-state-review:   #2d5673;
+  --color-state-approved: #2f6b4f;
+  --color-state-rejected: #8c3a3a;
+
+  --font-display: 'Spectral', Georgia, serif;
+  --font-sans:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  /* Visible keyboard focus everywhere, never removed. */
+  :focus-visible {
+    outline: 2px solid var(--color-seal);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* The register: ruled rows with a date gutter. The audit trail and the
+     application lists both use this, because both are records rather than
+     collections of objects. */
+  .register {
+    border-top: 1px solid var(--color-rule);
+  }
+
+  .register-row {
+    display: grid;
+    border-bottom: 1px solid var(--color-rule-soft);
+    background-color: var(--color-leaf);
+  }
+
+  .field-label {
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: #5c6a78;
+  }
+
+  .ref {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+}
