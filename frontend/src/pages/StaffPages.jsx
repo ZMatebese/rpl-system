@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import {
-  Empty, Notice, PageHeading, Reference, StatusMark, formatDate,
+  Empty, Notice, PageHeading, Reference, StatusMark, formatDate, nqfLabel,
 } from '../components/ui.jsx';
 
 function ApplicationRegister({ applications, columns = 'full' }) {
@@ -31,7 +31,7 @@ function ApplicationRegister({ applications, columns = 'full' }) {
           <div className="px-4 py-3">
             <div className="text-[14px]">{a.qualification_title}</div>
             <div className="text-[13px] text-ink-soft">
-              NQF {a.qualification_nqf_level} &middot; {a.evidence_count}{' '}
+              {a.qualification_faculty ?? nqfLabel(a.qualification_nqf_level)} &middot; {a.evidence_count}{' '}
               {a.evidence_count === 1 ? 'item' : 'items'}
             </div>
           </div>

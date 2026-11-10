@@ -157,7 +157,8 @@ describe('staff accounts: create, read, update', () => {
     const users = (await request(app).get('/api/admin/users').set(auth(admin))).body.users;
     const assessor = users.find((u) => u.email === 'assessor@rpl.local');
     expect(assessor.active).toBe(true);
-    expect(assessor.qualificationIds.length).toBe(qualIds().length);
+    const offered = getDb().prepare(`SELECT COUNT(*) AS n FROM qualifications WHERE active = 1`).get().n;
+    expect(assessor.qualificationIds.length).toBe(offered);
   });
 
   it('changes a role and the scope, writing both to the log', async () => {

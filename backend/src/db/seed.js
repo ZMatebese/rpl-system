@@ -2,14 +2,10 @@ import bcrypt from 'bcryptjs';
 import { getDb } from './index.js';
 import { config } from '../config/index.js';
 import { seedAdmin } from './seedAdmin.js';
+import {
+  CPUT_QUALIFICATIONS, LEGACY_DEMO_SAQA_IDS, OFFERED_RPL_TYPES,
+} from './cputQualifications.js';
 
-const QUALIFICATIONS = [
-  { saqa_id: '101234', title: 'Diploma in Information Technology', nqf_level: 6 },
-  { saqa_id: '101235', title: 'Advanced Diploma in Information Technology', nqf_level: 7 },
-  { saqa_id: '101236', title: 'Postgraduate Diploma in ICT', nqf_level: 8 },
-  { saqa_id: '101237', title: 'Diploma in Business Administration', nqf_level: 6 },
-  { saqa_id: '101238', title: 'National Diploma in Project Management', nqf_level: 6 },
-];
 
 // Demonstration accounts for development only. There is deliberately no demo
 // administrator: the single administrator comes from ADMIN_* environment
@@ -29,24 +25,46 @@ function demoUsersEnabled() {
 export function seed({ quiet = false } = {}) {
   const db = getDb();
 
-  const insertQual = db.prepare(
-    `INSERT OR IGNORE INTO qualifications (saqa_id, title, nqf_level) VALUES (@saqa_id, @title, @nqf_level)`
+  // Upsert by title, so re-running the seed picks up corrections to the list
+  // (an RPL type CPUT changes, say) without duplicating rows.
+  const upsertQual = db.prepare(
+    `INSERT INTO qualifications (title, faculty, rpl_type, nqf_level, active)
+     VALUES (@title, @faculty, @rpl_type, @nqf_level, @active)
+     ON CONFLICT(title) DO UPDATE SET
+       faculty = excluded.faculty, rpl_type = excluded.rpl_type,
+       nqf_level = excluded.nqf_level, active = excluded.active`
   );
+  const retireLegacy = db.prepare(`UPDATE qualifications SET active = 0 WHERE saqa_id = ?`);
   const insertUser = db.prepare(
     `INSERT OR IGNORE INTO users (email, password_hash, first_name, surname, role)
      VALUES (@email, @password_hash, @first_name, @surname, @role)`
   );
   const findUser = db.prepare(`SELECT id FROM users WHERE email = ?`);
-  const hasScope = db.prepare(`SELECT COUNT(*) AS n FROM staff_qualifications WHERE user_id = ?`);
+  // Counts only qualifications still offered, so demo staff created against the
+  // old placeholder list are re-scoped to the CPUT list.
+  const hasScope = db.prepare(
+    `SELECT COUNT(*) AS n FROM staff_qualifications sq
+     JOIN qualifications q ON q.id = sq.qualification_id
+     WHERE sq.user_id = ? AND q.active = 1`
+  );
   const addScope = db.prepare(
     `INSERT OR IGNORE INTO staff_qualifications (user_id, qualification_id)
-     SELECT ?, id FROM qualifications`
+     SELECT ?, id FROM qualifications WHERE active = 1`
   );
 
   const withDemo = demoUsersEnabled();
 
   const run = db.transaction(() => {
-    for (const q of QUALIFICATIONS) insertQual.run(q);
+    for (const q of CPUT_QUALIFICATIONS) {
+      upsertQual.run({
+        title: q.title,
+        faculty: q.faculty,
+        rpl_type: q.rpl_type,
+        nqf_level: q.nqf_level ?? null,
+        active: OFFERED_RPL_TYPES.includes(q.rpl_type) ? 1 : 0,
+      });
+    }
+    for (const saqa of LEGACY_DEMO_SAQA_IDS) retireLegacy.run(saqa);
     if (!withDemo) return;
     for (const u of DEMO_USERS) {
       insertUser.run({
@@ -86,7 +104,8 @@ export function seed({ quiet = false } = {}) {
         ? `\n  Administrator: ${adminResult.user.email}`
         : '\n  No administrator configured. Set ADMIN_* in .env and run: npm run seed:admin'
     );
-    console.log(`\n  ${QUALIFICATIONS.length} qualifications loaded.\n`);
+    const offered = CPUT_QUALIFICATIONS.filter((q) => OFFERED_RPL_TYPES.includes(q.rpl_type)).length;
+    console.log(`\n  ${CPUT_QUALIFICATIONS.length} CPUT qualifications loaded, ${offered} open for RPL.\n`);
   }
 }
 

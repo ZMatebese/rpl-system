@@ -79,6 +79,23 @@ evidence, and record *Assessment confirmed* or *Concerns*. The verdict is shown
 to the registrar and the assessor (not the applicant) and noted in the file's
 history. It does not change the application's status.
 
+### Qualifications
+
+The qualification list is CPUT's undergraduate RPL list (Step 8 of
+<https://www.cput.ac.za/study-at-cput/undergraduate/rpl>), kept in
+`backend/src/db/cputQualifications.js`: 32 qualifications across four
+faculties, each with its RPL type. Only the 20 marked *access only* or
+*access and/or exemptions* are offered to applicants; those marked not
+available, or left blank on the CPUT page, are stored but inactive.
+
+An applicant chooses the RPL route (access, exemption, or both). An *access
+only* qualification accepts access only, and the server enforces this.
+
+NQF levels are filled only where the title names the qualification type
+(Diploma 6, Advanced Diploma 7). CPUT does not publish SAQA IDs or the other
+levels on that page, so they are left empty. To change the list, edit the
+file and restart the server (or run `npm run seed`); rows are updated by title.
+
 ### Demonstration accounts
 
 Seeded automatically outside production (`SEED_DEMO_USERS=false` turns them

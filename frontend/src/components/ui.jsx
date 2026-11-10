@@ -94,6 +94,24 @@ export function Empty({ children }) {
   );
 }
 
+/** NQF level, or nothing when CPUT does not publish one. */
+export function nqfLabel(level) {
+  return level ? `NQF ${level}` : '';
+}
+
+export const RPL_TYPE_LABEL = {
+  ACCESS: 'Access only',
+  ACCESS_EXEMPTION: 'Access and/or exemption',
+  NOT_AVAILABLE: 'Not available for RPL',
+  UNCONFIRMED: 'RPL type not confirmed',
+};
+
+export const RPL_ROUTE_LABEL = {
+  ACCESS: 'Access to the qualification',
+  EXEMPTION: 'Exemption from subjects',
+  ACCESS_AND_EXEMPTION: 'Access and exemption',
+};
+
 export function formatDate(value) {
   if (!value) return '—';
   const d = new Date(value.replace(' ', 'T') + (value.includes('Z') ? '' : 'Z'));

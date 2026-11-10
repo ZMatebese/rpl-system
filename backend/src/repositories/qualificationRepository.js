@@ -5,9 +5,10 @@ export const qualificationRepository = {
     return getDb().prepare(`SELECT * FROM qualifications WHERE id = ?`).get(id);
   },
 
+  /** Qualifications open for RPL, grouped by faculty for the picker. */
   listActive() {
     return getDb()
-      .prepare(`SELECT * FROM qualifications WHERE active = 1 ORDER BY nqf_level, title`)
+      .prepare(`SELECT * FROM qualifications WHERE active = 1 ORDER BY faculty, title`)
       .all();
   },
 };

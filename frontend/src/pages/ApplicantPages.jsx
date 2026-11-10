@@ -53,7 +53,7 @@ export function MyApplications() {
               <div className="px-4 py-3">
                 <div className="text-[14px]">{a.qualification_title}</div>
                 <div className="text-[13px] text-ink-soft">
-                  NQF {a.qualification_nqf_level} &middot; {a.evidence_count}{' '}
+                  {a.qualification_faculty ?? `NQF ${a.qualification_nqf_level}`} &middot; {a.evidence_count}{' '}
                   {a.evidence_count === 1 ? 'evidence item' : 'evidence items'}
                 </div>
               </div>
@@ -70,7 +70,7 @@ export function MyApplications() {
 export function NewApplication() {
   const navigate = useNavigate();
   const [qualifications, setQualifications] = useState([]);
-  const [form, setForm] = useState({ qualificationId: '', motivation: '' });
+  const [form, setForm] = useState({ qualificationId: '', rplRoute: 'ACCESS', motivation: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -80,6 +80,20 @@ export function NewApplication() {
       .catch((e) => setError(e.message));
   }, []);
 
+  const faculties = [...new Set(qualifications.map((q) => q.faculty ?? 'Other'))];
+  const chosen = qualifications.find((q) => String(q.id) === String(form.qualificationId));
+  const offersExemption = chosen?.rpl_type === 'ACCESS_EXEMPTION';
+
+  function chooseQualification(id) {
+    const q = qualifications.find((x) => String(x.id) === String(id));
+    // An access-only qualification can only be applied for as access.
+    setForm((f) => ({
+      ...f,
+      qualificationId: id,
+      rplRoute: q?.rpl_type === 'ACCESS_EXEMPTION' ? f.rplRoute : 'ACCESS',
+    }));
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setBusy(true);
@@ -87,6 +101,7 @@ export function NewApplication() {
     try {
       const { application } = await api.createApplication({
         qualificationId: Number(form.qualificationId),
+        rplRoute: form.rplRoute,
         motivation: form.motivation,
       });
       navigate(`/applications/${application.id}`);
@@ -100,32 +115,79 @@ export function NewApplication() {
     <>
       <PageHeading
         title="Start an application"
-        caption="This opens a draft. You can change it and add evidence until you submit."
+        caption="This opens a draft. You can change it and add evidence until you submit. Apply for one qualification only."
       />
       <Notice kind="error">{error}</Notice>
 
       <form onSubmit={onSubmit} className="max-w-[46rem]">
-        <Field label="Qualification you are claiming against" id="qualificationId">
+        <Field
+          label="Qualification"
+          id="qualificationId"
+          hint="Only qualifications CPUT currently accepts RPL applications for are listed."
+        >
           <select
             id="qualificationId"
             className={inputClass}
             value={form.qualificationId}
-            onChange={(e) => setForm((f) => ({ ...f, qualificationId: e.target.value }))}
+            onChange={(e) => chooseQualification(e.target.value)}
             required
           >
             <option value="">Choose a qualification</option>
-            {qualifications.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.title} (NQF {q.nqf_level})
-              </option>
+            {faculties.map((faculty) => (
+              <optgroup key={faculty} label={faculty}>
+                {qualifications
+                  .filter((q) => (q.faculty ?? 'Other') === faculty)
+                  .map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.title}{q.rpl_type === 'ACCESS' ? ' (access only)' : ''}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </Field>
 
+        {chosen && (
+          <fieldset className="mb-5">
+            <legend className="field-label mb-2">What are you applying for?</legend>
+            <div className="grid gap-2">
+              {[
+                ['ACCESS', 'Access to the qualification',
+                  'You do not meet the normal entry requirements, but have relevant work experience.'],
+                ['EXEMPTION', 'Exemption from subjects',
+                  'Your learning is matched against specific subjects. Exemptions are capped at 50% of the qualification.'],
+                ['ACCESS_AND_EXEMPTION', 'Both access and exemption', 'Entry to the qualification and credit for subjects.'],
+              ]
+                .filter(([value]) => offersExemption || value === 'ACCESS')
+                .map(([value, label, hint]) => (
+                  <label key={value} className="flex items-start gap-3 border border-rule bg-leaf px-4 py-3">
+                    <input
+                      type="radio"
+                      name="rplRoute"
+                      className="mt-1"
+                      value={value}
+                      checked={form.rplRoute === value}
+                      onChange={() => setForm((f) => ({ ...f, rplRoute: value }))}
+                    />
+                    <span>
+                      <span className="block text-[14px]">{label}</span>
+                      <span className="block text-[13px] text-ink-soft">{hint}</span>
+                    </span>
+                  </label>
+                ))}
+            </div>
+            {!offersExemption && (
+              <p className="mt-2 text-[13px] text-ink-soft">
+                CPUT offers RPL for access only on this qualification.
+              </p>
+            )}
+          </fieldset>
+        )}
+
         <Field
           label="Motivation"
           id="motivation"
-          hint="Describe the experience you are claiming and where you gained it. An assessor reads this alongside your evidence."
+          hint="Your reasons for applying and an overview of your working life. Attach your CV, examples of your work and certified copies of certificates as evidence on the next page."
         >
           <textarea
             id="motivation"

@@ -92,6 +92,63 @@ function migrateUsersTable(handle) {
   }
 }
 
+/** Runs `sql` with foreign keys suspended inside one transaction — the
+ *  documented way to rebuild a SQLite table without breaking references. */
+function rebuild(handle, sql) {
+  handle.exec('PRAGMA foreign_keys = OFF');
+  handle.exec('BEGIN');
+  try {
+    handle.exec(sql);
+    handle.exec('COMMIT');
+  } catch (err) {
+    try { handle.exec('ROLLBACK'); } catch { /* already unwound */ }
+    throw err;
+  } finally {
+    handle.exec('PRAGMA foreign_keys = ON');
+  }
+}
+
+/**
+ * Adds faculty and rpl_type, makes nqf_level optional and title unique.
+ * nqf_level was NOT NULL, which forced a guessed level for qualifications
+ * CPUT lists without one, so the table is rebuilt rather than altered.
+ */
+function migrateQualificationsTable(handle) {
+  const existing = handle
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'qualifications'`)
+    .get();
+  if (!existing || existing.sql.includes('rpl_type')) return;
+
+  rebuild(handle, `
+    CREATE TABLE qualifications_new (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      saqa_id     TEXT    UNIQUE,
+      title       TEXT    NOT NULL UNIQUE,
+      faculty     TEXT    NULL,
+      rpl_type    TEXT    NOT NULL DEFAULT 'UNCONFIRMED'
+                          CHECK (rpl_type IN ('ACCESS','ACCESS_EXEMPTION','NOT_AVAILABLE','UNCONFIRMED')),
+      nqf_level   INTEGER NULL CHECK (nqf_level IS NULL OR nqf_level BETWEEN 1 AND 10),
+      active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
+    );
+    INSERT INTO qualifications_new (id, saqa_id, title, nqf_level, active)
+      SELECT id, saqa_id, title, nqf_level, active FROM qualifications;
+    DROP TABLE qualifications;
+    ALTER TABLE qualifications_new RENAME TO qualifications;
+  `);
+}
+
+/** Adds the applicant's chosen RPL route. A plain column add is enough. */
+function migrateApplicationsTable(handle) {
+  const existing = handle
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'applications'`)
+    .get();
+  if (!existing || existing.sql.includes('rpl_route')) return;
+  handle.exec(`
+    ALTER TABLE applications ADD COLUMN rpl_route TEXT NOT NULL DEFAULT 'ACCESS'
+      CHECK (rpl_route IN ('ACCESS','EXEMPTION','ACCESS_AND_EXEMPTION'))
+  `);
+}
+
 export function getDb() {
   if (db) return db;
 
@@ -110,6 +167,8 @@ export function getDb() {
   if (dbPath !== ':memory:') handle.exec('PRAGMA journal_mode = WAL');
 
   migrateUsersTable(handle);
+  migrateQualificationsTable(handle);
+  migrateApplicationsTable(handle);
 
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   handle.exec(schema);

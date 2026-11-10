@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import {
-  Button, Empty, Field, Notice, PageHeading, formatDateTime, inputClass,
+  Button, Empty, Field, Notice, PageHeading, formatDateTime, inputClass, nqfLabel,
 } from '../components/ui.jsx';
 
 const ROLE_LABEL = {
@@ -148,7 +148,8 @@ export function People() {
                   </div>
                   <div className="px-4 py-3 text-[13px] text-ink-soft">
                     {STAFF.includes(u.role)
-                      ? u.qualificationIds.length && u.qualificationIds.length === qualifications.length
+                      ? qualifications.length > 0 &&
+                        qualifications.every((q) => u.qualificationIds.includes(q.id))
                         ? 'All qualifications'
                         : u.qualificationIds.length
                         ? u.qualificationIds.map((id) => qualTitle[id] ?? `#${id}`).join('; ')
@@ -192,6 +193,29 @@ export function People() {
 function QualificationPicker({ qualifications, value, onChange, idPrefix }) {
   const toggle = (id) =>
     onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  const faculties = [...new Set(qualifications.map((q) => q.faculty ?? 'Other'))];
+  const all = qualifications.length > 0 && qualifications.every((q) => value.includes(q.id));
+  return (
+    <div>
+      <label className="mb-3 flex items-center gap-2 text-[13px] text-ink-soft">
+        <input type="checkbox" checked={all}
+               onChange={() => onChange(all ? [] : qualifications.map((q) => q.id))} />
+        All qualifications
+      </label>
+      {faculties.map((faculty) => (
+        <fieldset key={faculty} className="mb-4">
+          <legend className="mb-1.5 text-[13px] font-medium">{faculty}</legend>
+          <FacultyQualifications
+            qualifications={qualifications.filter((q) => (q.faculty ?? 'Other') === faculty)}
+            value={value} toggle={toggle} idPrefix={idPrefix}
+          />
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
+function FacultyQualifications({ qualifications, value, toggle, idPrefix }) {
   return (
     <div className="grid gap-1.5 sm:grid-cols-2">
       {qualifications.map((q) => (
@@ -204,7 +228,7 @@ function QualificationPicker({ qualifications, value, onChange, idPrefix }) {
             onChange={() => toggle(q.id)}
           />
           <span>
-            {q.title} <span className="text-[12px] text-ink-soft">NQF {q.nqf_level}</span>
+            {q.title} <span className="text-[12px] text-ink-soft">{nqfLabel(q.nqf_level)}</span>
           </span>
         </label>
       ))}

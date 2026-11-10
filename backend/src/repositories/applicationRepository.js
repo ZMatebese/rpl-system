@@ -5,6 +5,8 @@ const SELECT_WITH_JOINS = `
          q.title       AS qualification_title,
          q.saqa_id     AS qualification_saqa_id,
          q.nqf_level   AS qualification_nqf_level,
+         q.faculty     AS qualification_faculty,
+         q.rpl_type    AS qualification_rpl_type,
          ap.first_name AS applicant_first_name,
          ap.surname    AS applicant_surname,
          ap.email      AS applicant_email,
@@ -28,13 +30,13 @@ export const applicationRepository = {
     return getDb().prepare(`SELECT * FROM applications WHERE id = ?`).get(id);
   },
 
-  create({ applicantId, qualificationId, motivation = '' }) {
+  create({ applicantId, qualificationId, rplRoute = 'ACCESS', motivation = '' }) {
     const info = getDb()
       .prepare(
-        `INSERT INTO applications (applicant_id, qualification_id, motivation)
-         VALUES (?, ?, ?)`
+        `INSERT INTO applications (applicant_id, qualification_id, rpl_route, motivation)
+         VALUES (?, ?, ?, ?)`
       )
-      .run(applicantId, qualificationId, motivation);
+      .run(applicantId, qualificationId, rplRoute, motivation);
     return this.findById(info.lastInsertRowid);
   },
 
@@ -72,16 +74,17 @@ export const applicationRepository = {
     return getDb().prepare(`${SELECT_WITH_JOINS} ORDER BY a.updated_at DESC`).all();
   },
 
-  updateDraft(id, { qualificationId, motivation }) {
+  updateDraft(id, { qualificationId, rplRoute, motivation }) {
     getDb()
       .prepare(
         `UPDATE applications
          SET qualification_id = COALESCE(?, qualification_id),
+             rpl_route        = COALESCE(?, rpl_route),
              motivation       = COALESCE(?, motivation),
              updated_at       = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
-      .run(qualificationId ?? null, motivation ?? null, id);
+      .run(qualificationId ?? null, rplRoute ?? null, motivation ?? null, id);
     return this.findById(id);
   },
 

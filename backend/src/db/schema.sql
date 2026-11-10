@@ -38,8 +38,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_single_active_admin
 CREATE TABLE IF NOT EXISTS qualifications (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     saqa_id     TEXT    UNIQUE,
-    title       TEXT    NOT NULL,
-    nqf_level   INTEGER NOT NULL CHECK (nqf_level BETWEEN 1 AND 10),
+    title       TEXT    NOT NULL UNIQUE,
+    faculty     TEXT    NULL,
+    -- What CPUT offers for this qualification under RPL (Step 8 of the CPUT
+    -- RPL page): access only, access and/or exemption, not available, or not
+    -- stated on the page.
+    rpl_type    TEXT    NOT NULL DEFAULT 'UNCONFIRMED'
+                        CHECK (rpl_type IN ('ACCESS','ACCESS_EXEMPTION','NOT_AVAILABLE','UNCONFIRMED')),
+    -- NULL where CPUT does not publish the level, rather than a guessed value.
+    nqf_level   INTEGER NULL CHECK (nqf_level IS NULL OR nqf_level BETWEEN 1 AND 10),
     active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
 );
 
@@ -57,6 +64,10 @@ CREATE TABLE IF NOT EXISTS applications (
     status                  TEXT    NOT NULL DEFAULT 'DRAFT'
                                     CHECK (status IN ('DRAFT','SUBMITTED','UNDER_REVIEW',
                                                       'ASSESSMENT_COMPLETE','APPROVED','REJECTED')),
+    -- The RPL route the applicant asks for. ACCESS is entry into the
+    -- qualification; EXEMPTION is credit for specific subjects (capped at 50%).
+    rpl_route               TEXT    NOT NULL DEFAULT 'ACCESS'
+                                    CHECK (rpl_route IN ('ACCESS','EXEMPTION','ACCESS_AND_EXEMPTION')),
     motivation              TEXT    NOT NULL DEFAULT '',
     outcome_rationale       TEXT    NULL,
     created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

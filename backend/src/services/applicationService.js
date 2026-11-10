@@ -11,6 +11,31 @@ import { STATUS, ROLE, TRANSITIONS, availableTransitions } from './stateMachine.
 import { mayReadApplication, isModeratorInScope, MODERATABLE_STATUSES } from './accessPolicy.js';
 import { forbidden, notFound, conflict, unprocessable, badRequest } from '../utils/AppError.js';
 
+export const RPL_ROUTES = ['ACCESS', 'EXEMPTION', 'ACCESS_AND_EXEMPTION'];
+
+/**
+ * The qualification must be open for RPL, and the route asked for must be one
+ * CPUT offers for it: an "access only" qualification accepts ACCESS only.
+ */
+function checkQualificationAndRoute(qualification, route) {
+  if (!qualification) throw badRequest('Unknown qualification.');
+  if (!qualification.active) {
+    throw unprocessable(
+      `${qualification.title} is not currently open for RPL applications.`,
+      'QUALIFICATION_CLOSED'
+    );
+  }
+  if (!RPL_ROUTES.includes(route)) {
+    throw badRequest(`RPL route must be one of: ${RPL_ROUTES.join(', ')}.`);
+  }
+  if (qualification.rpl_type === 'ACCESS' && route !== 'ACCESS') {
+    throw unprocessable(
+      `${qualification.title} offers RPL for access only, not exemption.`,
+      'ROUTE_NOT_OFFERED'
+    );
+  }
+}
+
 export const applicationService = {
   /**
    * The single gateway through which every application status change passes.
@@ -74,13 +99,14 @@ export const applicationService = {
     return applicationRepository.findById(applicationId);
   },
 
-  create({ qualificationId, motivation }, actor) {
+  create({ qualificationId, rplRoute = 'ACCESS', motivation }, actor) {
     const qualification = qualificationRepository.findById(qualificationId);
-    if (!qualification) throw badRequest('Unknown qualification.');
+    checkQualificationAndRoute(qualification, rplRoute);
 
     const application = applicationRepository.create({
       applicantId: actor.id,
       qualificationId,
+      rplRoute,
       motivation: motivation ?? '',
     });
 
@@ -106,8 +132,11 @@ export const applicationService = {
     if (application.status !== STATUS.DRAFT) {
       throw conflict('Only an application in DRAFT may be edited.');
     }
-    if (payload.qualificationId && !qualificationRepository.findById(payload.qualificationId)) {
-      throw badRequest('Unknown qualification.');
+    if (payload.qualificationId || payload.rplRoute) {
+      const qualification = qualificationRepository.findById(
+        payload.qualificationId ?? application.qualification_id
+      );
+      checkQualificationAndRoute(qualification, payload.rplRoute ?? application.rpl_route);
     }
     return applicationRepository.updateDraft(applicationId, payload);
   },

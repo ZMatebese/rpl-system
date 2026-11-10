@@ -31,8 +31,10 @@ router.get('/assessment-criteria', handle((req, res) => {
 
 // --- applicant ------------------------------------------------------------
 router.post('/applications', authorise(ROLE.APPLICANT), handle((req, res) => {
-  const { qualificationId, motivation } = req.body ?? {};
-  res.status(201).json({ application: applicationService.create({ qualificationId, motivation }, req.user) });
+  const { qualificationId, rplRoute, motivation } = req.body ?? {};
+  res.status(201).json({
+    application: applicationService.create({ qualificationId, rplRoute, motivation }, req.user),
+  });
 }));
 
 router.get('/applications/mine', authorise(ROLE.APPLICANT), handle((req, res) => {
@@ -40,10 +42,10 @@ router.get('/applications/mine', authorise(ROLE.APPLICANT), handle((req, res) =>
 }));
 
 router.patch('/applications/:id', authorise(ROLE.APPLICANT), handle((req, res) => {
-  const { qualificationId, motivation } = req.body ?? {};
+  const { qualificationId, rplRoute, motivation } = req.body ?? {};
   res.json({
     application: applicationService.updateDraft(
-      Number(req.params.id), { qualificationId, motivation }, req.user
+      Number(req.params.id), { qualificationId, rplRoute, motivation }, req.user
     ),
   });
 }));

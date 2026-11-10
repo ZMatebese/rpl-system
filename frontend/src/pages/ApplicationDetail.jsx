@@ -6,7 +6,7 @@ import { AuditLedger } from '../components/AuditLedger.jsx';
 import { AssessmentForm, AssessmentRecord } from '../components/Assessment.jsx';
 import {
   Button, Empty, Field, Notice, Reference, StatusMark,
-  formatBytes, formatDate, inputClass,
+  formatBytes, formatDate, inputClass, nqfLabel, RPL_ROUTE_LABEL, RPL_TYPE_LABEL,
 } from '../components/ui.jsx';
 
 export function ApplicationDetail() {
@@ -91,13 +91,14 @@ export function ApplicationDetail() {
         <div className="px-5 py-5">
           <h1 className="text-[26px] leading-tight">{application.qualification_title}</h1>
           <p className="mt-1 text-[14px] text-ink-soft">
-            NQF level {application.qualification_nqf_level}
+            {[application.qualification_faculty, nqfLabel(application.qualification_nqf_level)]
+              .filter(Boolean).join(' · ')}
             {application.qualification_saqa_id && (
               <> &middot; SAQA <span className="ref">{application.qualification_saqa_id}</span></>
             )}
           </p>
 
-          <dl className="mt-5 grid gap-x-8 gap-y-3 sm:grid-cols-3">
+          <dl className="mt-5 grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="field-label">Applicant</dt>
               <dd className="text-[14px]">
@@ -110,6 +111,17 @@ export function ApplicationDetail() {
                 {application.assessor_first_name
                   ? `${application.assessor_first_name} ${application.assessor_surname}`
                   : 'Not yet allocated'}
+              </dd>
+            </div>
+            <div>
+              <dt className="field-label">RPL route requested</dt>
+              <dd className="text-[14px]">
+                {RPL_ROUTE_LABEL[application.rpl_route] ?? application.rpl_route}
+                {application.qualification_rpl_type && (
+                  <span className="text-ink-soft">
+                    {' '}&middot; CPUT offers {RPL_TYPE_LABEL[application.qualification_rpl_type]?.toLowerCase()}
+                  </span>
+                )}
               </dd>
             </div>
             <div>
