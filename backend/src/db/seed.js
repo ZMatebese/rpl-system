@@ -86,9 +86,19 @@ export function seed({ quiet = false } = {}) {
   run();
 
   // The administrator is seeded only when its credentials are configured.
+  // A bad ADMIN_* value must not stop the server: warn and carry on, so the
+  // existing administrator (if any) can still sign in.
   let adminResult = null;
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-    adminResult = seedAdmin({ quiet: true });
+    try {
+      adminResult = seedAdmin({ quiet: true });
+    } catch (err) {
+      console.warn(
+        `WARNING: administrator not updated from .env: ${err.message}\n` +
+        '         If the password contains #, wrap it in double quotes in .env, e.g.\n' +
+        '         ADMIN_PASSWORD="Tebza#Admin2026"'
+      );
+    }
   }
 
   if (!quiet) {

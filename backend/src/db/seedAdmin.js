@@ -28,7 +28,14 @@ export function seedAdmin({ quiet = false, env = process.env } = {}) {
   if (!EMAIL_RE.test(email)) {
     throw new Error('ADMIN_EMAIL is missing or not a valid email address.');
   }
-  validatePassword(password); // throws with a readable message
+  try {
+    validatePassword(password);
+  } catch (err) {
+    throw new Error(
+      `ADMIN_PASSWORD: ${err.message}` +
+      (password.length < 10 ? ' (In .env, a # starts a comment unless the value is in double quotes.)' : '')
+    );
+  }
 
   const db = getDb();
   const existing = userRepository.findByEmail(email);

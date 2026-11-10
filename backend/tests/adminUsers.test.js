@@ -3,6 +3,7 @@ import request from 'supertest';
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   app, resetDatabase, tokenFor, applicationInState, someQualificationId, TMP_ROOT,
 } from './helpers.js';
@@ -404,7 +405,7 @@ describe('migration of an existing database', () => {
 
     const script = `
       process.env.DB_PATH = ${JSON.stringify(legacyPath)};
-      const { getDb } = await import(${JSON.stringify(path.resolve('src/db/index.js'))});
+      const { getDb } = await import(${JSON.stringify(pathToFileURL(path.resolve('src/db/index.js')).href)});
       const db = getDb();
       const rows = db.prepare('SELECT id, role, active FROM users ORDER BY id').all();
       db.prepare("INSERT INTO users (email,password_hash,first_name,surname,role) VALUES ('m@x.co','h','M','O','MODERATOR')").run();
